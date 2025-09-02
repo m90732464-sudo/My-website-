@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tariq POS (Restaurant)</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"/>
+</head>
+<body data-theme="dark">
+  <!-- LOGIN -->
+  <div id="loginScreen" class="center-screen">
+    <div class="card login-card">
+      <h2>Tariq POS — Login</h2>
+      <select id="staffDropdown" aria-label="Staff select"></select>
+      <input id="staffPass" type="password" placeholder="Password" />
+      <div class="row">
+        <button id="loginBtn" class="btn primary">Login</button>
+        <button id="resetBtn" class="btn outline">Reset Data</button>
+      </div>
+      <p id="loginError" class="error"></p>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <div class="brand"><h1>Tariq POS</h1><small>Rs. (PKR)</small></div>
+      <div class="top-actions">
+        <span id="currentStaff" class="staff-label"></span>
+
+        <button id="inventoryBtn" class="icon-btn" title="Inventory"><i class="fa-solid fa-boxes-stacked"></i></button>
+        <button id="tablesBtn" class="icon-btn" title="Table Management"><i class="fa-solid fa-chair"></i></button>
+        <button id="receiptBtn" class="icon-btn" title="Last Bill"><i class="fa-solid fa-receipt"></i></button>
+        <button id="historyBtn" class="icon-btn" title="Bill History"><i class="fa-solid fa-clock-rotate-left"></i></button>
+        <button id="calcBtn" class="icon-btn" title="Calculator"><i class="fa-solid fa-calculator"></i></button>
+        <button id="themeBtn" class="icon-btn" title="Theme"><i class="fa-solid fa-moon"></i></button>
+        <button id="logoutBtn" class="icon-btn" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <!-- ITEMS + tables -->
+      <section class="panel items-panel">
+        <div class="panel-head">
+          <h3>Menu Items</h3>
+          <div class="row">
+            <input id="searchItem" placeholder="Search item..." />
+            <button id="refreshBtn" class="btn">Refresh</button>
+          </div>
+        </div>
+
+        <div id="itemsGrid" class="items-grid"></div>
+
+        <div class="mt">
+          <h4>Tables (quick view)</h4>
+          <div id="tablesOverview" class="tables-overview"></div>
+        </div>
+      </section>
+
+      <!-- CART -->
+      <aside class="panel cart-panel">
+        <div class="panel-head">
+          <h3>Current Order</h3>
+          <div class="small">Order type & payment</div>
+        </div>
+
+        <div class="order-row">
+          <div class="order-type">
+            <label><input type="radio" name="orderType" value="dinein" checked/> Dine-in</label>
+            <label><input type="radio" name="orderType" value="takeaway"/> Takeaway</label>
+            <label><input type="radio" name="orderType" value="delivery"/> Delivery</label>
+          </div>
+
+          <div class="pay-tabs">
+            <button id="payCash" class="tab active">Cash</button>
+            <button id="payCredit" class="tab">Credit</button>
+          </div>
+        </div>
+
+        <div id="creditPanel" class="hidden small">
+          <input id="creditName" placeholder="Customer name for credit" />
+        </div>
+
+        <div id="deliveryPanel" class="hidden small">
+          <input id="deliveryNumber" placeholder="Delivery number (e.g. 92300xxxxxxx)" />
+          <input id="deliveryCharge" type="number" min="0" placeholder="Delivery charge (Rs.)" />
+        </div>
+
+        <div>
+          <label for="tableSelect">Assign to table (optional)</label>
+          <select id="tableSelect"><option value="">— none —</option></select>
+        </div>
+
+        <div id="cartList" class="cart-list"></div>
+
+        <div class="totals">
+          <div>Subtotal: <strong id="subtotal">Rs.0.00</strong></div>
+          <div>Service (5% dine-in): <strong id="serviceCharge">Rs.0.00</strong></div>
+          <div>Delivery Charge: <strong id="deliveryChargeDisplay">Rs.0.00</strong></div>
+          <div class="grand">Total: <strong id="total">Rs.0.00</strong></div>
+        </div>
+
+        <div class="row mt">
+          <button id="editCartBtn" class="btn">Edit Bill</button>
+          <button id="clearCart" class="btn outline">Clear</button>
+        </div>
+
+        <div class="row mt">
+          <button id="printBtn" class="btn primary">Print Bill</button>
+          <button id="placeOrder" class="btn success">Place Order</button>
+        </div>
+      </aside>
+    </main>
+
+    <!-- INVENTORY MODAL -->
+    <div id="inventoryModal" class="modal hidden" data-modal="inventory">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3>Inventory</h3>
+          <button id="closeInv" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="row">
+          <input id="invName" placeholder="Item name" />
+          <input id="invPrice" type="number" placeholder="Price (Rs.)" />
+          <button id="addInv" class="btn primary">Add</button>
+        </div>
+
+        <div id="invList" class="inv-list mt"></div>
+        <p class="muted">Only Admin users can edit or delete inventory (enforced in UI and actions).</p>
+      </div>
+    </div>
+
+    <!-- TABLES Modal -->
+    <div id="tablesModal" class="modal hidden" data-modal="tables">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3>Table Management</h3>
+          <button id="closeTables" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="row">
+          <input id="tableName" placeholder="Table name (e.g. T1)" />
+          <button id="addTable" class="btn primary">Add Table</button>
+        </div>
+
+        <div id="tablesList" class="mt"></div>
+        <p class="muted">Click a table to toggle Free / Occupied. Assign orders to tables from the cart area.</p>
+      </div>
+    </div>
+
+    <!-- RECEIPT MODAL -->
+    <div id="receiptModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3>Last Receipt</h3>
+          <button id="closeReceipt" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <pre id="receiptPre" class="receipt-pre"></pre>
+      </div>
+    </div>
+
+    <!-- HISTORY MODAL -->
+    <div id="historyModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3>Bill History</h3>
+          <button id="closeHistory" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="row mt">
+          <button id="dailyBtn" class="btn">Daily</button>
+          <button id="monthlyBtn" class="btn">Monthly</button>
+        </div>
+
+        <div id="historyList" class="mt"></div>
+      </div>
+    </div>
+
+    <!-- CALCULATOR MODAL -->
+    <div id="calcModal" class="modal hidden" data-modal="calc">
+      <div class="modal-card calc-card">
+        <div class="modal-head">
+          <h3>Calculator</h3>
+          <button id="closeCalc" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <input id="calcDisplay" readonly class="calc-display" />
+        <div class="calc-grid">
+          <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button data-key="/">÷</button>
+          <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button data-key="*">×</button>
+          <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="-">−</button>
+          <button data-key="0">0</button><button data-key=".">.</button><button id="calcEq">=</button><button data-key="+">+</button>
+          <button id="calcClear" class="wide">C</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTE: app.js is a module (ES module). Replace FIREBASE_CONFIG in app.js with your own config to enable real-time syncing. -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
