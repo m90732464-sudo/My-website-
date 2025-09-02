@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tariq POS (Restaurant)</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"/>
+</head>
+<body data-theme="dark">
+  <!-- LOGIN -->
+  <div id="loginScreen" class="center-screen">
+    <div class="card login-card">
+      <h2>Tariq POS — Login</h2>
+      <select id="staffDropdown" aria-label="Staff select"></select>
+      <input id="staffPass" type="password" placeholder="Password" />
+      <div class="row">
+        <button id="loginBtn" class="btn primary">Login</button>
+        <button id="resetBtn" class="btn outline">Reset Data</button>
+      </div>
+      <p id="loginError" class="error"></p>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <div class="brand"><h1>Tariq POS</h1><small>Rs. (PKR)</small></div>
+      <div class="top-actions">
+        <span id="currentStaff" class="staff-label"></span>
+
+        <button id="inventoryBtn" class="icon-btn" title="Inventory"><i class="fa-solid fa-boxes-stacked"></i></button>
+        <button id="tablesBtn" class="icon-btn" title="Table Management"><i class="fa-solid fa-chair"></i></button>
+        <button id="receiptBtn" class="icon-btn" title="Last Bill"><i class="fa-solid fa-receipt"></i></button>
+        <button id="historyBtn" class="icon-btn" title="Bill History"><i class="fa-solid fa-clock-rotate-left"></i></button>
+        <button id="calcBtn" class="icon-btn" title="Calculator"><i class="fa-solid fa-calculator"></i></button>
+        <button id="themeBtn" class="icon-btn" title="Theme"><i class="fa-solid fa-moon"></i></button>
+        <button id="logoutBtn" class="icon-btn" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <!-- ITEMS + tables -->
+      <section class="panel items-panel">
+        <div class="panel-head">
+          <h3>Menu Items</h3>
+          <div class="row">
+            <input id="searchItem" placeholder="Search item..." />
+            <button id="refreshBtn" class="btn">Refresh</button>
+          </div>
+        </div>
+
+        <div id="itemsGrid" class="items-grid"></div>
+
+        <div class="mt">
+          <h4>Tables (quick view)</h4>
+          <div id="tablesOverview" class="tables-overview"></div>
+        </div>
+      </section>
+
+      <!-- CART -->
+      <aside class="panel cart-panel">
+        <div class="panel-head">
+          <h3>Current Order</h3>
+          <div class="small">Order type & payment</div>
+        </div>
+
+        <div class="order-row">
+          <div class="order-type">
+            <label><input type="radio" name="orderType" value="dinein" checked/> Dine-in</label>
+            <label><input type="radio" name="orderType" value="takeaway"/> Takeaway</label>
+            <label><input type="radio" name="orderType" value="delivery"/> Delivery</label>
+          </div>
+
+          <div class="pay-tabs">
+            <button id="payCash" class="tab active">Cash</button>
+            <button id="payCredit" class="tab">Credit</button>
+          </div>
+        </div>
+
+        <div id="creditPanel" class="hidden small">
+          <input id="creditName" placeholder="Customer name for credit" />
+        </div>
+
+        <div id="deliveryPanel" class="hidden small">
+          <input id="deliveryNumber" placeholder="Delivery number (e.g. 92300xxxxxxx)" />
+          <input id="deliveryCharge" type="number" min="0" placeholder="Delivery charge (Rs.)" />
+        </div>
+
+        <div>
+          <label for="tableSelect">Assign to table (optional)</label>
+          <select id="tableSelect"><option value="">— none —</option></select>
+        </div>
+
+        <div id="cartList" class="cart-list"></div>
+
+        <div class="totals">
+          <div>Subtotal: <strong id="subtotal">Rs.0.00</strong></div>
+          <div>Service (5% dine-in): <strong id="serviceCharge">Rs.0.00</strong></div>
+          <div>Delivery Charge: <strong id="deliveryChargeDisplay">Rs.0.00</strong></div>
+          <div class="grand">Total: <strong id="total">Rs.0.00</strong></div>
+        </div>
+
+        <div class="row mt">
+          <button id="editCartBtn" class="btn">Edit Bill</button>
+          <button id="clearCart" class="btn outline">Clear</button>
+        </div>
+
+        <div class="row mt">
+          <button id="printBtn" class="btn primary">Print Bill</button>
+          <button id="placeOrder" class="btn success">Place Order</button>
+        </div>
+      </aside>
+    </main>
+
+    <!-- INVENTORY MODAL -->
+    <div id="inventoryModal" class="modal hidden" data-modal="inventory">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3>Inventory</h3>
+          <button id="closeInv" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="row">
+          <input id="invName" placeholder="Item name" />
+          <input id="invPrice" type="number" placeholder="Price (Rs.)" />
+          <button id="addInv" class="btn primary">Add</button>
+        </div>
+
+        <div id="invList" class="inv-list mt"></div>
+        <p class="muted">Only Admin users can edit or delete inventory (enforced in UI and actions).</p>
+      </div>
+    </div>
+
+    <!-- TABLES Modal -->
+    <div id="tablesModal" class="modal hidden" data-modal="tables">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3>Table Management</h3>
+          <button id="closeTables" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="row">
+          <input id="tableName" placeholder="Table name (e.g. T1)" />
+          <button id="addTable" class="btn primary">Add Table</button>
+        </div>
+
+        <div id="tablesList" class="mt"></div>
+        <p class="muted">Click a table to toggle Free / Occupied. Assign orders to tables from the cart area.</p>
+      </div>
+    </div>
+
+    <!-- RECEIPT MODAL -->
+    <div id="receiptModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3>Last Receipt</h3>
+          <button id="closeReceipt" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <pre id="receiptPre" class="receipt-pre"></pre>
+      </div>
+    </div>
+
+    <!-- HISTORY MODAL -->
+    <div id="historyModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3>Bill History</h3>
+          <button id="closeHistory" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="row mt">
+          <button id="dailyBtn" class="btn">Daily</button>
+          <button id="monthlyBtn" class="btn">Monthly</button>
+        </div>
+
+        <div id="historyList" class="mt"></div>
+      </div>
+    </div>
+
+    <!-- CALCULATOR MODAL -->
+    <div id="calcModal" class="modal hidden" data-modal="calc">
+      <div class="modal-card calc-card">
+        <div class="modal-head">
+          <h3>Calculator</h3>
+          <button id="closeCalc" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <input id="calcDisplay" readonly class="calc-display" />
+        <div class="calc-grid">
+          <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button data-key="/">÷</button>
+          <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button data-key="*">×</button>
+          <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="-">−</button>
+          <button data-key="0">0</button><button data-key=".">.</button><button id="calcEq">=</button><button data-key="+">+</button>
+          <button id="calcClear" class="wide">C</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTE: app.js is a module (ES module). Replace FIREBASE_CONFIG in app.js with your own config to enable real-time syncing. -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
+:root{
+  --bg:#f4f6fb; --card:#ffffff; --muted:#6b7280; --accent:#7b2ff7; --accent2:#00c6ff; --text:#0f1724;
+}
+body[data-theme="dark"]{
+  --bg:#0f1724; --card:#111827; --muted:#94a3b8; --accent:#8b5cf6; --accent2:#06b6d4; --text:#e6eef8;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);}
+
+/* layout helpers */
+.center-screen{height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(2,6,23,0.08)}
+.hidden{display:none}
+.btn{padding:8px 12px;border-radius:8px;border:0;cursor:pointer;background:#e6e9ef;color:#111}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.success{background:#10b981;color:#fff}
+.btn.outline{background:transparent;border:1px solid rgba(0,0,0,0.08)}
+.row{display:flex;gap:8px;align-items:center}
+.mt{margin-top:12px}
+.small{font-size:0.85rem;color:var(--muted)}
+.muted{color:var(--muted)}
+
+/* login */
+.login-card{width:360px;text-align:center}
+.login-card select,input{width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #d1d5db;background:transparent;color:var(--text)}
+.error{color:#ef4444}
+
+/* topbar */
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:white}
+.topbar h1{margin:0}
+.top-actions{display:flex;gap:8px;align-items:center}
+.icon-btn{background:transparent;border:0;color:white;padding:8px;border-radius:8px;cursor:pointer;font-size:18px}
+.staff-label{font-weight:600;margin-right:8px}
+
+/* layout */
+.grid{display:grid;grid-template-columns:1fr 420px;gap:12px;padding:12px}
+.panel{background:var(--card);border-radius:12px;padding:12px;box-shadow:0 8px 30px rgba(2,6,23,0.04)}
+.items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.items-grid div{background:linear-gradient(180deg,var(--accent),var(--accent2));color:white;padding:12px;border-radius:10px;cursor:pointer;text-align:center}
+.items-grid div:hover{opacity:0.95}
+
+/* tables overview */
+.tables-overview{display:flex;gap:8px;flex-wrap:wrap}
+.table-pill{padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.04)}
+
+/* cart */
+.order-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.order-type{display:flex;gap:8px;flex-wrap:wrap}
+.pay-tabs{display:flex;gap:6px}
+.tab{padding:6px 8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);cursor:pointer;background:transparent}
+.tab.active{background:var(--accent);color:white}
+.cart-list{max-height:260px;overflow:auto;border-radius:8px;padding:6px;background:linear-gradient(180deg,rgba(0,0,0,0.02),transparent)}
+.cart-list > div{display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid rgba(0,0,0,0.04)}
+.totals{margin-top:12px;font-weight:600}
+.totals .grand{margin-top:6px;font-size:1.05rem}
+
+/* modals */
+.modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:12px;pointer-events:none}
+.modal.hidden{display:none}
+.modal-card{width:100%;max-width:680px;background:var(--card);border-radius:12px;padding:14px;box-shadow:0 12px 40px rgba(2,6,23,0.2);pointer-events:auto}
+.modal-head{display:flex;justify-content:space-between;align-items:center}
+.inv-list,.mt{margin-top:12px}
+.inv-item{display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid rgba(0,0,0,0.04)}
+.receipt-pre{white-space:pre-wrap;background:#111827;color:#e6eef8;padding:10px;border-radius:8px}
+
+/* calculator */
+.calc-card{max-width:360px}
+.calc-display{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);margin-top:8px;background:transparent;color:var(--text)}
+.calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.calc-grid button{padding:12px;border-radius:8px;border:0;background:var(--accent);color:#fff;font-weight:700}
+.wide{grid-column:span 4}
+@media (max-width:900px){
+  .grid{grid-template-columns:1fr}
+  .items-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+// app.js (ES module)
+// Tariq POS - Firebase-enabled (optional) + Table management + Admin-only inventory editing
+// Save this as app.js and open index.html in a modern browser (Chrome/Edge/Firefox).
+
+/* ================== FIREBASE CONFIG =====================
+ Replace the following FIREBASE_CONFIG object with your project's config
+ (from Firebase console -> Project settings). If you leave it `null`
+ the app will run using localStorage fallback (no real-time sync).
+ Example:
+ const FIREBASE_CONFIG = {
+   apiKey: "AIza....",
+   authDomain: "project-id.firebaseapp.com",
+   projectId: "project-id",
+   storageBucket: "project-id.appspot.com",
+   messagingSenderId: "....",
+   appId: "1:...:web:..."
+ };
+========================================================= */
+const FIREBASE_CONFIG = null; // <-- paste your config object here to enable firebase
+
+// ------------- IMPORT FIREBASE (only if config provided) --------------
+// We'll dynamically import firebase modules when needed.
+let firebaseApp = null;
+let firestore = null;
+let firebaseEnabled = false;
+
+async function initFirebaseIfNeeded() {
+  if (!FIREBASE_CONFIG) return; // not enabled
+  try {
+    // dynamic imports (modular SDK)
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js');
+    const { getFirestore, collection, doc, onSnapshot, setDoc, addDoc, updateDoc, deleteDoc, getDocs, getDoc } =
+      await import('https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js');
+
+    firebaseApp = initializeApp(FIREBASE_CONFIG);
+    firestore = getFirestore(firebaseApp);
+    firebaseEnabled = true;
+
+    // helper wrappers for Firestore operations will be used later
+    window.__fb = { collection, doc, onSnapshot, setDoc, addDoc, updateDoc, deleteDoc, getDocs, getDoc, firestore };
+    console.info('Firebase initialized.');
+  } catch (e) {
+    console.warn('Failed to init Firebase (check network/version). Falling back to localStorage.', e);
+    firebaseEnabled = false;
+  }
+}
+
+/* ================== APP START ================== */
+document.addEventListener('DOMContentLoaded', async () => {
+  await initFirebaseIfNeeded();
+
+  // ---------- Storage helper ----------
+  const LS = {
+    get(k, d = null) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v) { localStorage.setItem(k, JSON.stringify(v)); },
+    remove(k) { localStorage.removeItem(k); }
+  };
+
+  // ---------- Defaults ----------
+  const DEFAULT_STAFF = [
+    { username: "admin", password: "Boss1", role: "Admin" },
+    { username: "manager", password: "M1122", role: "Manager" },
+    { username: "cashier", password: "C1234", role: "Cashier" },
+    { username: "waiter", password: "W0909", role: "Waiter" }
+  ];
+
+  const DEFAULT_ITEMS = [
+    { id: "i1", name: "Biryani", price: 250 },
+    { id: "i2", name: "Burger", price: 180 },
+    { id: "i3", name: "Pizza", price: 1200 },
+    { id: "i4", name: "Cola", price: 120 }
+  ];
+
+  const DEFAULT_TABLES = [
+    { id: "t1", name: "T1", status: "free", currentOrder: null },
+    { id: "t2", name: "T2", status: "free", currentOrder: null },
+    { id: "t3", name: "T3", status: "free", currentOrder: null }
+  ];
+
+  // initialize local fallbacks if missing
+  if (!LS.get('pos_staff')) LS.set('pos_staff', DEFAULT_STAFF);
+  if (!LS.get('pos_items')) LS.set('pos_items', DEFAULT_ITEMS);
+  if (!LS.get('pos_orders')) LS.set('pos_orders', []);
+  if (!LS.get('pos_tables')) LS.set('pos_tables', DEFAULT_TABLES);
+
+  // ---------- DOM references ----------
+  const qs = s => document.querySelector(s);
+  const qsa = s => document.querySelectorAll(s);
+
+  const loginScreen = qs('#loginScreen');
+  const staffDropdown = qs('#staffDropdown');
+  const staffPass = qs('#staffPass');
+  const loginBtn = qs('#loginBtn');
+  const loginError = qs('#loginError');
+  const resetBtn = qs('#resetBtn');
+
+  const app = qs('#app');
+  const currentStaff = qs('#currentStaff');
+  const logoutBtn = qs('#logoutBtn');
+
+  const inventoryBtn = qs('#inventoryBtn');
+  const inventoryModal = qs('#inventoryModal');
+  const closeInv = qs('#closeInv');
+  const invName = qs('#invName');
+  const invPrice = qs('#invPrice');
+  const addInv = qs('#addInv');
+  const invList = qs('#invList');
+
+  const tablesBtn = qs('#tablesBtn');
+  const tablesModal = qs('#tablesModal');
+  const closeTables = qs('#closeTables');
+  const addTableBtn = qs('#addTable');
+  const tableNameInput = qs('#tableName');
+  const tablesList = qs('#tablesList');
+  const tablesOverview = qs('#tablesOverview');
+  const tableSelect = qs('#tableSelect');
+
+  const itemsGrid = qs('#itemsGrid');
+  const searchItem = qs('#searchItem');
+  const refreshBtn = qs('#refreshBtn');
+
+  const orderTypeRadios = qsa('input[name="orderType"]');
+  const deliveryPanel = qs('#deliveryPanel');
+  const deliveryNumber = qs('#deliveryNumber');
+  const deliveryChargeInput = qs('#deliveryCharge');
+
+  const payCashBtn = qs('#payCash');
+  const payCreditBtn = qs('#payCredit');
+  const creditPanel = qs('#creditPanel');
+  const creditName = qs('#creditName');
+
+  const cartList = qs('#cartList');
+  const subtotalEl = qs('#subtotal');
+  const serviceEl = qs('#serviceCharge');
+  const deliveryDisplay = qs('#deliveryChargeDisplay');
+  const totalEl = qs('#total');
+
+  const editCartBtn = qs('#editCartBtn');
+  const clearCartBtn = qs('#clearCart');
+  const printBtn = qs('#printBtn');
+  const placeOrderBtn = qs('#placeOrder');
+
+  const receiptBtn = qs('#receiptBtn');
+  const receiptModal = qs('#receiptModal');
+  const closeReceipt = qs('#closeReceipt');
+  const receiptPre = qs('#receiptPre');
+
+  const historyBtn = qs('#historyBtn');
+  const historyModal = qs('#historyModal');
+  const closeHistory = qs('#closeHistory');
+  const dailyBtn = qs('#dailyBtn');
+  const monthlyBtn = qs('#monthlyBtn');
+  const historyList = qs('#historyList');
+
+  const calcBtn = qs('#calcBtn');
+  const calcModal = qs('#calcModal');
+  const closeCalc = qs('#closeCalc');
+  const calcDisplay = qs('#calcDisplay');
+  const calcGridButtons = qs('.calc-grid');
+
+  const themeBtn = qs('#themeBtn');
+
+  // ---------- App state ----------
+  const STATE = {
+    staff: null,
+    items: LS.get('pos_items', DEFAULT_ITEMS),
+    orders: LS.get('pos_orders', []),
+    tables: LS.get('pos_tables', DEFAULT_TABLES),
+    cart: []
+  };
+
+  // ---------- Utilities ----------
+  const uid = (p='id') => p + Math.random().toString(36).slice(2,9);
+  const formatRs = n => `Rs.${Number(n||0).toFixed(2)}`;
+
+  // Firestore helpers (only if enabled)
+  function fbCol(name) {
+    if (!firebaseEnabled) return null;
+    return window.__fb.collection(window.__fb.firestore, name);
+  }
+
+  // ---------- Firebase realtime sync (if enabled) ----------
+  if (firebaseEnabled) {
+    // items
+    try {
+      const itemsCol = fbCol('items');
+      window.__fb.onSnapshot(itemsCol, snap => {
+        const remote = [];
+        snap.forEach(d => remote.push({ id: d.id, ...d.data() }));
+        // update local state and persist locally
+        STATE.items = remote;
+        LS.set('pos_items', STATE.items);
+        renderItems();
+        renderInventory();
+      });
+      // tables
+      const tablesCol = fbCol('tables');
+      window.__fb.onSnapshot(tablesCol, snap => {
+        const remote = [];
+        snap.forEach(d => remote.push({ id: d.id, ...d.data() }));
+        STATE.tables = remote;
+        LS.set('pos_tables', STATE.tables);
+        renderTablesOverview();
+        renderTableSelect();
+      });
+      // orders (optional)
+      const ordersCol = fbCol('orders');
+      window.__fb.onSnapshot(ordersCol, snap => {
+        const remote = [];
+        snap.forEach(d => remote.push({ id: d.id, ...d.data() }));
+        STATE.orders = remote;
+        LS.set('pos_orders', STATE.orders);
+      });
+    } catch (e) {
+      console.warn('Firebase realtime listeners failed', e);
+    }
+  }
+
+  // ---------- Staff dropdown ----------
+  function populateStaff() {
+    const staff = LS.get('pos_staff', DEFAULT_STAFF);
+    staffDropdown.innerHTML = '<option value="">Select staff</option>';
+    staff.forEach(s => {
+      const o = document.createElement('option'); o.value = s.username; o.textContent = `${s.username} (${s.role})`;
+      staffDropdown.appendChild(o);
+    });
+  }
+  populateStaff();
+
+  // ---------- LOGIN ----------
+  loginBtn.addEventListener('click', () => {
+    loginError.textContent = '';
+    const username = staffDropdown.value;
+    const pass = staffPass.value.trim();
+    const staff = LS.get('pos_staff', DEFAULT_STAFF).find(s => s.username === username && s.password === pass);
+    if (!staff) { loginError.textContent = 'Invalid username or password'; return; }
+    STATE.staff = staff;
+    currentStaff.textContent = `${staff.username} (${staff.role})`;
+    loginScreen.classList.add('hidden'); app.classList.remove('hidden');
+    staffPass.value = '';
+    renderItems();
+    renderInventory();
+    renderTablesOverview();
+    renderTableSelect();
+    renderCart();
+    applyTheme();
+    // ensure modals closed on login (fix stuck modals)
+    closeAllModals();
+  });
+
+  resetBtn.addEventListener('click', () => {
+    if (!confirm('Reset local POS data to defaults?')) return;
+    localStorage.clear();
+    location.reload();
+  });
+
+  logoutBtn.addEventListener('click', () => {
+    if (!confirm('Logout?')) return;
+    STATE.staff = null;
+    app.classList.add('hidden'); loginScreen.classList.remove('hidden');
+    // close modals on logout
+    closeAllModals();
+  });
+
+  // ---------- ITEMS / RENDER ----------
+  function renderItems(filter='') {
+    itemsGrid.innerHTML = '';
+    const list = STATE.items.filter(it => it.name.toLowerCase().includes(filter.toLowerCase()));
+    list.forEach(it => {
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.innerHTML = `<strong>${it.name}</strong><div class="muted">${formatRs(it.price)}</div>`;
+      card.addEventListener('click', () => addToCart(it.id));
+      itemsGrid.appendChild(card);
+    });
+  }
+  searchItem.addEventListener('input', () => renderItems(searchItem.value));
+  refreshBtn.addEventListener('click', () => {
+    // if Firebase enabled, remote should have latest; otherwise read localStorage
+    STATE.items = LS.get('pos_items', STATE.items);
+    renderItems();
+  });
+
+  // ---------- INVENTORY (Admin-only edits) ----------
+  inventoryBtn.addEventListener('click', () => {
+    renderInventory();
+    openModal(inventoryModal);
+  });
+  closeInv.addEventListener('click', () => closeModal(inventoryModal));
+
+  addInv.addEventListener('click', async () => {
+    if (!STATE.staff || STATE.staff.role !== 'Admin') return alert('Only Admins can add items');
+    const name = invName.value.trim(); const price = Number(invPrice.value);
+    if (!name || !price) return alert('Enter name and price');
+    const newItem = { id: uid('i'), name, price };
+    if (firebaseEnabled) {
+      try {
+        await window.__fb.addDoc(fbCol('items'), { name, price });
+      } catch (e) { console.warn(e); alert('Failed to add item to Firebase'); return; }
+    } else {
+      STATE.items.push(newItem);
+      LS.set('pos_items', STATE.items);
+    }
+    invName.value=''; invPrice.value='';
+    renderInventory(); renderItems();
+  });
+
+  function renderInventory() {
+    invList.innerHTML = '';
+    STATE.items.forEach(it => {
+      const row = document.createElement('div'); row.className = 'inv-item';
+      const controls = [];
+      // only allow admin to edit/delete in UI
+      if (STATE.staff && STATE.staff.role === 'Admin') {
+        controls.push(`<button class="btn" data-edit="${it.id}">Edit</button>`);
+        controls.push(`<button class="btn outline" data-del="${it.id}">Delete</button>`);
+      }
+      row.innerHTML = `<div><b>${it.name}</b><div class="muted">${formatRs(it.price)}</div></div>
+        <div class="row">${controls.join('')}</div>`;
+      invList.appendChild(row);
+    });
+    // attach handlers
+    invList.querySelectorAll('[data-del]').forEach(b => {
+      b.addEventListener('click', async (e) => {
+        const id = e.target.dataset.del;
+        if (!confirm('Delete item?')) return;
+        if (firebaseEnabled) {
+          // delete from firestore (doc id equals firestore doc id)
+          try {
+            await window.__fb.deleteDoc(window.__fb.doc(window.__fb.firestore, 'items', id));
+          } catch (err) { console.warn(err); alert('Failed to delete remote item'); return; }
+        } else {
+          STATE.items = STATE.items.filter(x => x.id !== id);
+          LS.set('pos_items', STATE.items);
+        }
+        renderInventory(); renderItems();
+      });
+    });
+    invList.querySelectorAll('[data-edit]').forEach(b => {
+      b.addEventListener('click', async (e) => {
+        const id = e.target.dataset.edit;
+        const it = STATE.items.find(x => x.id === id);
+        const newName = prompt('Item name', it.name);
+        if (!newName) return;
+        const newPrice = Number(prompt('Price (Rs.)', it.price));
+        if (isNaN(newPrice)) return alert('Invalid price');
+        if (firebaseEnabled) {
+          try {
+            await window.__fb.updateDoc(window.__fb.doc(window.__fb.firestore, 'items', id), { name: newName, price: newPrice });
+          } catch (err) { console.warn(err); alert('Failed to update remote item'); return; }
+        } else {
+          it.name = newName; it.price = newPrice;
+          LS.set('pos_items', STATE.items);
+        }
+        renderInventory(); renderItems();
+      });
+    });
+  }
+
+  // ---------- TABLES (Management) ----------
+  tablesBtn.addEventListener('click', () => {
+    renderTablesList();
+    openModal(tablesModal);
+  });
+  closeTables.addEventListener('click', () => closeModal(tablesModal));
+
+  addTableBtn.addEventListener('click', async () => {
+    if (!STATE.staff || STATE.staff.role !== 'Admin') return alert('Only Admins can add tables');
+    const name = tableNameInput.value.trim(); if (!name) return;
+    const newT = { id: uid('t'), name, status: 'free', currentOrder: null };
+    if (firebaseEnabled) {
+      try {
+        await window.__fb.addDoc(fbCol('tables'), { name, status: 'free', currentOrder: null });
+      } catch (e) { console.warn(e); alert('Failed to add remote table'); return; }
+    } else {
+      STATE.tables.push(newT); LS.set('pos_tables', STATE.tables);
+    }
+    tableNameInput.value = '';
+    renderTablesList(); renderTablesOverview(); renderTableSelect();
+  });
+
+  function renderTablesList() {
+    tablesList.innerHTML = '';
+    STATE.tables.forEach(t => {
+      const div = document.createElement('div'); div.className = 'inv-item';
+      div.innerHTML = `<div><b>${t.name}</b><div class="muted">${t.status.toUpperCase()}</div></div>
+        <div class="row">
+          <button class="btn" data-toggle="${t.id}">${t.status === 'free' ? 'Make Occupied' : 'Free'}</button>
+          ${STATE.staff && STATE.staff.role === 'Admin' ? `<button class="btn outline" data-del="${t.id}">Delete</button>` : ''}
+        </div>`;
+      tablesList.appendChild(div);
+    });
+    // handlers
+    tablesList.querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', async (e) => {
+      const id = e.target.dataset.toggle;
+      const t = STATE.tables.find(x => x.id === id);
+      const newStatus = t.status === 'free' ? 'occupied' : 'free';
+      if (firebaseEnabled) {
+        try {
+          await window.__fb.updateDoc(window.__fb.doc(window.__fb.firestore, 'tables', id), { status: newStatus });
+        } catch (err) { console.warn(err); alert('Failed to update remote table'); return; }
+      } else {
+        t.status = newStatus; LS.set('pos_tables', STATE.tables);
+      }
+      renderTablesList(); renderTablesOverview(); renderTableSelect();
+    }));
+    tablesList.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', e => {
+      const id = e.target.dataset.del;
+      if (!confirm('Delete table?')) return;
+      STATE.tables = STATE.tables.filter(x => x.id !== id);
+      LS.set('pos_tables', STATE.tables);
+      renderTablesList(); renderTablesOverview(); renderTableSelect();
+    }));
+  }
+
+  function renderTablesOverview() {
+    tablesOverview.innerHTML = '';
+    STATE.tables.forEach(t => {
+      const span = document.createElement('div'); span.className = 'table-pill';
+      span.textContent = `${t.name} (${t.status === 'free' ? 'Free' : 'Occupied'})`;
+      tablesOverview.appendChild(span);
+    });
+  }
+
+  function renderTableSelect() {
+    tableSelect.innerHTML = '<option value="">— none —</option>';
+    STATE.tables.forEach(t => {
+      const o = document.createElement('option'); o.value = t.id; o.textContent = `${t.name} (${t.status})`;
+      tableSelect.appendChild(o);
+    });
+  }
+
+  // ---------- CART ----------
+  function addToCart(itemId) {
+    const it = STATE.items.find(x => x.id === itemId);
+    if (!it) return;
+    const existing = STATE.cart.find(c => c.id === itemId);
+    if (existing) existing.qty++;
+    else STATE.cart.push({ id: it.id, name: it.name, price: it.price, qty: 1 });
+    renderCart();
+  }
+
+  function renderCart() {
+    cartList.innerHTML = '';
+    let subtotal = 0;
+    STATE.cart.forEach(ci => {
+      const row = document.createElement('div');
+      row.innerHTML = `<div>${ci.name} <small class="muted">x${ci.qty}</small></div><div>${formatRs(ci.price * ci.qty)}</div>`;
+      cartList.appendChild(row);
+      subtotal += ci.price * ci.qty;
+    });
+
+    const orderType = document.querySelector('input[name="orderType"]:checked').value;
+    const deliveryCharge = orderType === 'delivery' ? Number(deliveryChargeInput.value || 0) : 0;
+    const service = orderType === 'dinein' ? subtotal * 0.05 : 0;
+
+    subtotalEl.textContent = formatRs(subtotal);
+    serviceEl.textContent = formatRs(service);
+    deliveryDisplay.textContent = formatRs(deliveryCharge);
+    totalEl.textContent = formatRs(subtotal + service + deliveryCharge);
+
+    deliveryPanel.classList.toggle('hidden', orderType !== 'delivery');
+    creditPanel.classList.toggle('hidden', !payCreditBtn.classList.contains('active'));
+  }
+
+  // edit/clear
+  editCartBtn.addEventListener('click', () => {
+    if (STATE.cart.length === 0) return alert('Cart empty');
+    const name = prompt('Enter item name to edit quantity:');
+    if (!name) return;
+    const it = STATE.cart.find(c => c.name.toLowerCase() === name.toLowerCase());
+    if (!it) return alert('Not found in cart');
+    const qty = Number(prompt('New quantity', it.qty));
+    if (isNaN(qty) || qty < 0) return alert('Invalid');
+    if (qty === 0) STATE.cart = STATE.cart.filter(c => c !== it); else it.qty = qty;
+    renderCart();
+  });
+  clearCartBtn.addEventListener('click', () => { STATE.cart = []; renderCart(); });
+
+  // payment tabs
+  payCashBtn.addEventListener('click', () => { payCashBtn.classList.add('active'); payCreditBtn.classList.remove('active'); creditPanel.classList.add('hidden'); });
+  payCreditBtn.addEventListener('click', () => { payCreditBtn.classList.add('active'); payCashBtn.classList.remove('active'); creditPanel.classList.remove('hidden'); });
+
+  // ---------- PLACE ORDER / PRINT / WHATSAPP ----------
+  function buildReceipt(order) {
+    const lines = [];
+    lines.push('*** Tariq POS ***');
+    lines.push(`Staff: ${order.staff}`);
+    lines.push(`Type: ${order.type}   Payment: ${order.payment}`);
+    if (order.payment === 'Credit' && order.creditName) lines.push(`Credit To: ${order.creditName}`);
+    lines.push('-----------------------------');
+    order.items.forEach(it => lines.push(`${it.name} x${it.qty}  ${formatRs(it.price * it.qty)}`));
+    lines.push('-----------------------------');
+    lines.push(`Subtotal: ${formatRs(order.subtotal)}`);
+    lines.push(`Service: ${formatRs(order.serviceCharge)}`);
+    lines.push(`Delivery: ${formatRs(order.deliveryCharge)}`);
+    lines.push(`TOTAL: ${formatRs(order.total)}`);
+    lines.push('-----------------------------');
+    lines.push(`Time: ${new Date(order.timestamp).toLocaleString()}`);
+    return lines.join('\n');
+  }
+
+  async functt
